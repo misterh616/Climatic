@@ -1,0 +1,72 @@
+Public Function Temp_hum(Temperature As Double, Humidite As Double, pression As Double, precision As Double) As Double
+
+'je définis les variables de mes fonctions
+ 'variables des pressions
+ Dim pv As Double
+ Dim pvs As Double
+ Dim pvsTeta As Double
+ Dim pvsTetaH As Double
+ Dim pvsTetaH_derive As Double
+ 'décomposition des fonctions
+ Dim g As Double
+ Dim g_derive As Double
+ Dim h As Double
+ Dim h_derive As Double
+ Dim j As Double
+ Dim j_derive As Double
+ Dim fonc As Double
+ Dim fonc_derive As Double
+ Dim T_rosee As Double 'température de rosée en fonction de la pression et de la température
+ Dim graine As Double 'point de départ de la méthode de Newton
+ 'variables pour la méthode de Newton
+ Dim x_next As Double
+ Dim x_n As Double
+ Dim epsilon As Double
+ Dim k As Integer
+ 
+ 'Pression de vapeur saturante en fonction de la température
+ pvs = 10 ^ (2.7877 + 7.625 * Temperature / (241.6 + Temperature))
+ 
+ 'Pression de vapeur d'eau dans l'air sec
+ pv = Humidite * pvs
+ 
+ 
+ 'Température de rosée en fonction de la pression de vapeur saturante et de l'humidité
+ T_rosee = 237.3 * Log(pvs * Humidite / 611) / (7.5 * Log(10) - Log(pvs * Humidite / 611))
+ graine = T_rosee
+ x_n = graine
+ 'la température de rosée est plus proche de la température du bulbe humide
+ 'que la température de l'air par conséquent je l'utilise comme graine pour Newton
+ 
+ 'méthode de Newton
+ k = 0
+ 
+Do
+    'Pression de vapeur saturante en fonction de la température du bulbe humide
+    pvsTetaH = 10 ^ (2.7877 + 7.625 * x_n / (241.6 + x_n))
+ 
+    fonc = pvsTetaH - pv - ((pression - pvsTetaH) * (Temperature - x_n) / (1532.4 - 1.3 * x_n))
+ 
+    'détails des fonctions pour déterminer la dérivée de la fonction fonc
+    pvsTetaH_derive = pvsTetaH * Log(10) * 1842.2 / (241.6 + x_n) ^ 2
+    h = (pression - pvsTetaH) * (Temperature - x_n)
+    h_derive = -pression - Temperature * pvsTetaH * Log(10) * 1842.2 / (241.6 + x_n) ^ 2 + pvsTetaH + x_n * pvsTetaH * Log(10) * 1842.2 / (241.6 + x_n) ^ 2
+    j = 1532.4 - 1.3 * x_n
+    j_derive = -1.3
+    g_derive = (h_derive * j - h * j_derive) / j ^ 2
+ 
+    fonc_derive = pvsTetaH_derive - g_derive
+
+    'suite
+    'x_next = x_n - fonc(x_n) / fonc_derive(x_n)
+    x_next = x_n - fonc / fonc_derive 'CYRIL GLEVER: Fonc et Fonc_Derive ne sont déclarés ni comme fonctions ni comme tableau. Ces variables sont calculées dans la boucle DO
+    'test de l'écart entre l'ancienne valeur et la nouvelle valeur
+    epsilon = x_next - x_n
+    x_n = x_next
+    k = k + 1
+    'Boucle pour vérifier la précision, elle s'arrête après 1000 itérations
+Loop Until (Abs(epsilon) <= precision Or k = 1000)
+
+ Temp_hum = x_next
+
+End Function
